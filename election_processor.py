@@ -10,8 +10,10 @@ import csv
 class Election:
     def __init__(self,election_csv,candidate_csv,vote_csv,vote_below_the_line_csv=False,party_lists_csv=False):
         self.import_election_details(election_csv) #import details about the election
+        self.import_candidates(candidate_csv)
 
-    #import basic details about the election 
+    #import basic details about the election
+    #we still need to add party list options
     def import_election_details(self,election_csv):
         with open(election_csv) as csvfile:
             csv_reader = csv.reader(csvfile,delimiter=',')
@@ -149,16 +151,17 @@ class Election:
                 else:
                     break
 
-                        
-                    
-
-
-
-
-
     #import candidates
     def import_candidates(self,candidate_csv):
-        pass
+        self.candidates = []
+        with open(candidate_csv) as csvfile:
+            csv_reader = csv.reader(csvfile,delimiter=',')
+            row_number = 0
+            for row in csv_reader:
+                self.candidates.append(row) #add each candidate to the list of candidates
+        
+        self.num_candidates = len(self.candidates)
+                
 
 #main function, run the election
 def main():
