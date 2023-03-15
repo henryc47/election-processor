@@ -2,6 +2,7 @@
 #a program for determing the outcome of elections
 
 import csv
+from tqdm import tqdm
 
 
 #this class represents votes as a list of preferences in candidate order
@@ -163,9 +164,11 @@ class Election:
         self.raw_votes = [] #a list containing all the vote objects
         with open(votes_csv) as csvfile:
             csv_reader = csv.reader(csvfile,delimiter=',')
-            for row in csv_reader:
+            print('importing votes . . .')
+            for row in tqdm(csv_reader):
                 new_vote = RawVote(row)
                 self.raw_votes.append(new_vote) #add each candidate to the list of candidates
+            print('votes imported')
 
     def display_raw_votes(self):
         for vote in self.raw_votes:
