@@ -4,12 +4,16 @@
 import csv
 
 
-#store votes in number preferance form 
+#this class represents votes as a list of preferences in candidate order
+#votes are imported and then validated in this state
+class RawVote:
+    def __init__(self,list_votes):
+        self.list_votes = list_votes #list of preferences in candidate order
+
+
 class Vote:
-    def __init__(self,list_votes,quantity=1):
-        self.list_votes = list_votes #where they rank each candidate
-
-
+    def __init__(self,list_votes):
+        self.list_votes = list_votes #list of candidates in preference order
 
 #function to manage the election process
 class Election:
@@ -156,14 +160,16 @@ class Election:
 
     #import raw votes            
     def import_votes(self,votes_csv):
-        self.votes = [] #a list containing all the vote objects
+        self.raw_votes = [] #a list containing all the vote objects
         with open(votes_csv) as csvfile:
             csv_reader = csv.reader(csvfile,delimiter=',')
             for row in csv_reader:
-                self.votes.append(row) #add each candidate to the list of candidates
-                print(row)
-        
-        print(self.votes)
+                new_vote = RawVote(row)
+                self.raw_votes.append(new_vote) #add each candidate to the list of candidates
+
+    def display_raw_votes(self):
+        for vote in self.raw_votes:
+            print(vote.list_votes)
 
 
 #main function, run the election
