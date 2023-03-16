@@ -168,8 +168,7 @@ class Election:
             csv_reader = csv.reader(csvfile,delimiter=',')
             print('importing votes . . .')
             for row in tqdm(csv_reader):
-                new_vote = RawVote(row)
-                self.raw_votes.append(new_vote) #add each candidate to the list of candidates
+                self.raw_votes.append(row) #add each candidate to the list of candidates
             print('votes imported')
 
     #import raw votes if there is a party list
@@ -181,6 +180,7 @@ class Election:
     def validate_votes(self):
         print('checking if votes valid')
         for raw_vote in tqdm(self.raw_votes):
+            pass
                 
             
     
@@ -197,7 +197,7 @@ class Election:
 
     def display_raw_votes(self):
         for vote in self.raw_votes:
-            print(vote.list_votes)
+            print(vote)
 
 
 #main function, run the election
