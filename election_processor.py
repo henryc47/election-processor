@@ -15,6 +15,7 @@ class Election:
             self.validate_votes() #determine if these votes are valid
         elif self.party_list_voting==True: #not fully developed so far
             self.import_votes_party() #import votes using party list voting
+            self.standardise_votes_party() #ensure votes are valid integers
             self.validate_votes_party() #determine if these votes are valid
             self.convert_party_votes() #convert party list style votes to candidate style votes
         else:
@@ -22,6 +23,11 @@ class Election:
             pass #this should never happen
         
         self.convert_votes_to_preference_order() #convert votes from candidate order to preference order for ease of processing
+        #print('raw votes')
+        #self.display_raw_votes()
+        #print('valid votes')
+        #self.display_valid_votes()
+
 
     #import basic details about the election
     #we still need to add party list options
@@ -134,11 +140,11 @@ class Election:
                         self.skip_preferences_policy = 'invalid'
                         print("A skip makes the whole vote invalid")
                     elif extract_data=='compress':
-                        self.skip = 'compress'
+                        self.skip_preferences_policy = 'compress'
                         #note this option will be the same as discard_from unless skipped preferences is allowed
                         print("A skipped preference will be compressed, I.E 1,2,3,4,6 = 1,2,3,4,5 ")             
                     else:
-                        self.too_many_candidates_policy = 'discard_extra'
+                        self.too_many_candidates_policy = 'compress'
                         print("WARNING : ",extract_data,' not a valid method of handling skipped preferences')
                         print('Defaulting to A skipped preference will be compressed, I.E 1,2,3,4,6 = 1,2,3,4,5')
 
@@ -193,7 +199,8 @@ class Election:
             self.raw_votes = votes #these votes are still considered to be raw votes
 
 
-
+    def standardise_votes_party(self):
+        pass
 
 
     #process raw votes into valid votes
@@ -205,13 +212,56 @@ class Election:
         #self.too_many_candidates_policy
         #self.repeat_candidates_policy
         #self.skip_preferences_policy
-        
-            
+        self.num_possible_candidates = len(self.raw_votes[0])
+        self.valid_votes = []
+        invalid_count = 0
+        for raw_vote in tqdm(self.raw_votes): #go through all the votes
+            vote_valid,vote = self.validate_vote(raw_vote)
+            if vote_valid:
+                self.valid_votes.append(vote)
+            else:
+                invalid_count = invalid_count+1
+        print(invalid_count, ' votes invalid')
+
 
             
-                
+
+    #takes in a vote and determines if it is valid or not (return True/False), as well as the validated vote if True
+    def validate_vote(self,input_vote):
+        raw_vote = input_vote.copy()
+        vote_valid = True #the vote is valid unless it breaks one of our rules
+        #first check for skipped preferences, handle options, 'discard from', 'invalid', 'compress'
+        last_unskipped_vote = 0
+        max_preference = max(raw_vote)+1 #maximum value of preference in vote, should be equal to self.num_possible_candidates+1
+        for i in range(1,max_preference): #go through all the legal preference rankings
+            #print('i = ',i)
+            try:
+                #print('not skipped')
+                index = raw_vote.index(i) #check if this preference is found
+                if last_unskipped_vote == i-1:#if we have not skipped any votes yet
+                    #print('no skips yet')
+                    last_unskipped_vote = i #record the last unskipped vote
+                else: #note for this to occur, self.skip_preferences_policy needs to be compress (otherwise we would have broke out of the loop if a skip occurred)
+                    #print('last skip ',last_unskipped_vote)
+                    raw_vote[index] = last_unskipped_vote+1 #give it the next value in the order of preferences
+                    last_unskipped_vote = last_unskipped_vote+1 #and record this as the last unskipped value
+            except ValueError: #if this preference is not found
+                #print('skipped ')
+                if self.skip_preferences_policy=='invalid':#the whole vote is now invalid
+                    vote_valid = False
+                    return vote_valid,None #immediately exit, no point handling invalid votes further
+                elif self.skip_preferences_policy=='discard_from':
+                    #immediately discard the rest of the preferences (value greater or equal to that skipped)
+                    for j,preference in enumerate(raw_vote):
+                        if preference>=i:
+                            raw_vote[j] = 0 #discarded preferences have a value of zero
+
+                    break #break out of the loop, we will only need to discard from a skip once
+                elif self.skip_preferences_policy=='compress':
+                    continue #compression is handled under the matching else for "if last_unskipped_vote==i-1"
+
+        return vote_valid,raw_vote     
             
-    
     #validate party list votes
     def validate_votes_party(self):
         pass
@@ -226,6 +276,11 @@ class Election:
     def display_raw_votes(self):
         for vote in self.raw_votes:
             print(vote)
+    
+    def display_valid_votes(self):
+        for vote in self.valid_votes:
+            print(vote)
+
 
 
 #main function, run the election
