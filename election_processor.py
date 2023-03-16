@@ -4,9 +4,6 @@
 import csv
 from tqdm import tqdm
 
-
-
-
 #function to manage the election process
 class Election:
     def __init__(self,election_csv,candidate_csv,votes_csv,vote_below_the_line_csv=False,party_lists_csv=False):
@@ -14,6 +11,7 @@ class Election:
         self.import_candidates(candidate_csv) #import candidate names
         if self.party_list_voting==False:
             self.import_votes(votes_csv) #import raw votes
+            self.standardise_votes() #ensure votes are valid integers
             self.validate_votes() #determine if these votes are valid
         elif self.party_list_voting==True: #not fully developed so far
             self.import_votes_party() #import votes using party list voting
@@ -113,13 +111,13 @@ class Election:
                 #how to handle multiple candidates having the same preference
                 elif row_number==9:
                     if extract_data=='discard_from':
-                        self.repeat_preferences_policy = 'discard_from'
+                        self.repeat_candidates_policy = 'discard_from'
                         print('If equal preferences made, matching and lower preferences discarded')
                     elif extract_data=='invalid':
-                        self.repeat_preferences_policy = 'invalid'
+                        self.repeat_candidates_policy = 'invalid'
                         print("If equal preferences made, vote is invalid")
                     elif extract_data=='discard_matching':
-                        self.repeat_preferences_policy = 'discard_matching'
+                        self.repeat_candidates_policy = 'discard_matching'
                         #note this option will be the same as discard_from unless skipped preferences is allowed with compression
                         print("If equal preferences made, only matching preferences discarded")            
                     else:
@@ -175,12 +173,42 @@ class Election:
     def import_votes_party():
         pass
 
+    #remove non-integer or negative votes
+    def standardise_votes(self):
+        print('converting votes to valid integers . . .')
+        votes = []
+        for raw_vote in tqdm(self.raw_votes):
+            vote = []
+            for raw_choice in raw_vote:
+                if raw_choice.isdigit():
+                    choice = int(raw_choice) #convert vote to an integer
+                    if choice<0:
+                        choice = 0 #negative votes are not allowed, default to 0
+                else:
+                    choice = 0 #default value will be 0, indicating no preference
+                #append the processed choice to the vote
+                vote.append(choice)
+            #append the processed choice to the votes
+            votes.append(vote)
+            self.raw_votes = votes #these votes are still considered to be raw votes
+
+
+
+
 
     #process raw votes into valid votes
     def validate_votes(self):
-        print('checking if votes valid')
-        for raw_vote in tqdm(self.raw_votes):
-            pass
+        print('checking if votes valid . . .')
+        #self.min_candidates
+        #self.max_candidates
+        #self.too_few_candidates_policy
+        #self.too_many_candidates_policy
+        #self.repeat_candidates_policy
+        #self.skip_preferences_policy
+        
+            
+
+            
                 
             
     
