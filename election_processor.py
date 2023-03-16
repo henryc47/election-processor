@@ -6,22 +6,6 @@ from tqdm import tqdm
 
 
 
-"""
-#this class represents votes as a list of preferences in candidate order
-#votes are imported and then validated in this state
-class RawVote:
-    def __init__(self,list_votes):
-        self.list_votes = list_votes #list of preferences in candidate order
-
-class RawPartyVote:
-    def __init__(self,list_votes,list_party_votes):
-        self.list_votes = list_votes #list of preferences in candidate order
-        self.list_party_votes #list of preferences in party order
-
-class Vote:
-    def __init__(self,list_votes):
-        self.list_votes = list_votes #list of candidates in preference order
-"""
 
 #function to manage the election process
 class Election:
