@@ -5,23 +5,41 @@ import csv
 from tqdm import tqdm
 
 
+
+"""
 #this class represents votes as a list of preferences in candidate order
 #votes are imported and then validated in this state
 class RawVote:
     def __init__(self,list_votes):
         self.list_votes = list_votes #list of preferences in candidate order
 
+class RawPartyVote:
+    def __init__(self,list_votes,list_party_votes):
+        self.list_votes = list_votes #list of preferences in candidate order
+        self.list_party_votes #list of preferences in party order
 
 class Vote:
     def __init__(self,list_votes):
         self.list_votes = list_votes #list of candidates in preference order
+"""
 
 #function to manage the election process
 class Election:
     def __init__(self,election_csv,candidate_csv,votes_csv,vote_below_the_line_csv=False,party_lists_csv=False):
         self.import_election_details(election_csv) #import details about the election
         self.import_candidates(candidate_csv) #import candidate names
-        self.import_votes(votes_csv) #import raw votes
+        if self.party_list_voting==False:
+            self.import_votes(votes_csv) #import raw votes
+            self.validate_votes() #determine if these votes are valid
+        elif self.party_list_voting==True: #not fully developed so far
+            self.import_votes_party() #import votes using party list voting
+            self.validate_votes_party() #determine if these votes are valid
+            self.convert_party_votes() #convert party list style votes to candidate style votes
+        else:
+            print("WARNING : self.party_list_voting is neither true nor false, this should never happen")
+            pass #this should never happen
+        
+        self.convert_votes_to_preference_order() #convert votes from candidate order to preference order for ease of processing
 
     #import basic details about the election
     #we still need to add party list options
@@ -169,6 +187,29 @@ class Election:
                 new_vote = RawVote(row)
                 self.raw_votes.append(new_vote) #add each candidate to the list of candidates
             print('votes imported')
+
+    #import raw votes if there is a party list
+    def import_votes_party():
+        pass
+
+
+    #process raw votes into valid votes
+    def validate_votes(self):
+        print('checking if votes valid')
+        for raw_vote in tqdm(self.raw_votes):
+                
+            
+    
+    #validate party list votes
+    def validate_votes_party(self):
+        pass
+
+    #convert party list votes into normal candidate based votes
+    def convert_party_votes(self):
+        pass
+
+    def convert_votes_to_preference_order(self):
+        pass
 
     def display_raw_votes(self):
         for vote in self.raw_votes:
