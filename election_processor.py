@@ -23,10 +23,10 @@ class Election:
             pass #this should never happen
         
         self.convert_votes_to_preference_order() #convert votes from candidate order to preference order for ease of processing
-        #print('raw votes')
-        #self.display_raw_votes()
-        #print('valid votes')
-        #self.display_valid_votes()
+        print('raw votes')
+        self.display_raw_votes()
+        print('valid votes')
+        self.display_valid_votes()
 
 
     #import basic details about the election
@@ -127,20 +127,20 @@ class Election:
                         #note this option will be the same as discard_from unless skipped preferences is allowed with compression
                         print("If equal preferences made, only matching preferences discarded")            
                     else:
-                        self.too_many_candidates_policy = 'discard_extra'
+                        self.repeat_candidates_policy = 'discard_from'
                         print("WARNING : ",extract_data,' not a valid method of handling matching preferences')
                         print('Defaulting to If equal preferences made, matching and lower preferences discarded') 
 
                 #how to handle missed preferences (I.E numbering 1-6, then putting 8)
                 elif row_number==10:
                     if extract_data=='discard_from':
-                        self.skip_preferences_policy = 'discard_from'
+                        self.skip_candidates_policy = 'discard_from'
                         print('Disgard preferences made after a skip')
                     elif extract_data=='invalid':
-                        self.skip_preferences_policy = 'invalid'
+                        self.skip_candidates_policy = 'invalid'
                         print("A skip makes the whole vote invalid")
                     elif extract_data=='compress':
-                        self.skip_preferences_policy = 'compress'
+                        self.skip_candidates_policy = 'compress'
                         #note this option will be the same as discard_from unless skipped preferences is allowed
                         print("A skipped preference will be compressed, I.E 1,2,3,4,6 = 1,2,3,4,5 ")             
                     else:
@@ -222,18 +222,15 @@ class Election:
             else:
                 invalid_count = invalid_count+1
         print(invalid_count, ' votes invalid')
-
-
             
-
     #takes in a vote and determines if it is valid or not (return True/False), as well as the validated vote if True
     def validate_vote(self,input_vote):
         raw_vote = input_vote.copy()
         vote_valid = True #the vote is valid unless it breaks one of our rules
         #first check for skipped preferences, handle options, 'discard from', 'invalid', 'compress'
         last_unskipped_vote = 0
-        max_preference = max(raw_vote)+1 #maximum value of preference in vote, should be equal to self.num_possible_candidates+1
-        for i in range(1,max_preference): #go through all the legal preference rankings
+        max_preference = max(raw_vote) #maximum value of preference in vote, should be equal to self.num_possible_candidates
+        for i in range(1,max_preference+1): #go through all the legal preference rankings
             #print('i = ',i)
             try:
                 #print('not skipped')
@@ -247,18 +244,53 @@ class Election:
                     last_unskipped_vote = last_unskipped_vote+1 #and record this as the last unskipped value
             except ValueError: #if this preference is not found
                 #print('skipped ')
-                if self.skip_preferences_policy=='invalid':#the whole vote is now invalid
+                if self.skip_candidates_policy=='invalid':#the whole vote is now invalid
                     vote_valid = False
                     return vote_valid,None #immediately exit, no point handling invalid votes further
-                elif self.skip_preferences_policy=='discard_from':
+                elif self.skip_candidates_policy=='discard_matching':
                     #immediately discard the rest of the preferences (value greater or equal to that skipped)
                     for j,preference in enumerate(raw_vote):
                         if preference>=i:
                             raw_vote[j] = 0 #discarded preferences have a value of zero
 
                     break #break out of the loop, we will only need to discard from a skip once
-                elif self.skip_preferences_policy=='compress':
+                elif self.skip_candidates_policy=='compress':
                     continue #compression is handled under the matching else for "if last_unskipped_vote==i-1"
+                else:
+                     print("WARNING : Skip candidates policy ",self.skip_candidates_policy, " not valid")
+
+        #now that we have removed or discarded skipped preferences, now we need to handle skipped preferences
+        max_preference = max(raw_vote) #maximum value of preference in vote, should be equal to self.num_possible_candidates+1 (to handle for loop)
+        i = 1
+        while i<=max_preference: #go through all the votes
+            num_votes = raw_vote.count(i) #how common is that preference in the list of votes
+            if num_votes==1: #this should be the case
+                i = i+1
+                continue
+            elif num_votes==0: #if this is the case, bug in previous step but otherwise ignore
+                print("WARNING : SKIPS STILL PRESENT AFTER SKIP REMOVAL STEP")
+            else:
+                if self.repeat_candidates_policy=='invalid':
+                    vote_valid = False
+                    return vote_valid,None #immediately exit, no point handling invalid votes further
+                elif self.repeat_candidates_policy=='discard_from':
+                    #immediately discard the rest of the preferences (value greater or equal to that skipped)
+                    for j,preference in enumerate(raw_vote):
+                        if preference>=i:
+                            raw_vote[j] = 0 #discarded preferences have a value of zero
+
+                    break #no need to continue with processing as all additional preferences are now zero               
+                elif self.repeat_candidates_policy=='discard_matching':
+                    for j,preference in enumerate(raw_vote):
+                        if preference==i:
+                            raw_vote[j] = 0 #discard matching preferences
+                        elif preference>i:
+                            raw_vote[j] = preference-1 #remove the skip in position
+                            max_preference = max_preference-1 #max preference is now reduced
+
+                else:
+                    print("WARNING : Repeat candidates policy ",self.repeat_candidates_policy, " not valid")
+            i = i + 1 #increment i by 1
 
         return vote_valid,raw_vote     
             
