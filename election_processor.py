@@ -23,10 +23,10 @@ class Election:
             pass #this should never happen
         
         self.convert_votes_to_preference_order() #convert votes from candidate order to preference order for ease of processing
-        print('raw votes')
-        self.display_raw_votes()
-        print('valid votes')
-        self.display_valid_votes()
+        #print('raw votes')
+        #self.display_raw_votes()
+        #print('valid votes')
+        #self.display_valid_votes()
 
 
     #import basic details about the election
@@ -81,14 +81,28 @@ class Election:
                         self.early_tie_handling = 'same_time'
                 #minimum number of candidates for a valid vote
                 elif row_number==5:
-                    self.min_candidates = extract_data
+                    try:
+                        self.min_candidates = int(extract_data)
+                        if self.min_candidates<0: #note 0 is a special case indicating all candidates must be used
+                            print("WARNING : Minimum number of candidates must be at least 1, have set minimum to 1")
+                            self.max_candidates=1
+                    except ValueError:
+                        print('WARNING : No minimum number of candidates for validity, defaulting to 1')
+                        self.min_candidates = 1
                     if self.min_candidates==0:
                         print("Minimum number of candidates for valid vote : All")
                     else:
                         print("Minimum number of candidates for valid vote : ",self.min_candidates)
                 #maximum number of candidates for a valid vote
                 elif row_number==6:
-                    self.max_candidates = extract_data
+                    try:
+                        self.max_candidates = int(extract_data)
+                        if self.min_candidates<0: #note 0 is a special case indicating all candidates must be used
+                            print("WARNING : Maximum number of candidates must be at least 1, have set maximum to 1")
+                            self.max_candidates=1
+                    except ValueError:
+                        print('WARNING : No maximum number of candidates for validity, defaulting to all')
+                        self.min_candidates = 0
                     if self.max_candidates==0:
                         print("Maximum number of candidates for valid vote : All")
                     else:
@@ -213,6 +227,10 @@ class Election:
         #self.repeat_candidates_policy
         #self.skip_preferences_policy
         self.num_possible_candidates = len(self.raw_votes[0])
+        if self.max_candidates==0:#this means maximum is the total number of candidates
+            self.max_candidates = self.num_candidates
+        if self.min_candidates==0:#this means the minimum is the total number of candidate
+            self.min_candidates = self.num_candidates
         self.valid_votes = []
         invalid_count = 0
         for raw_vote in tqdm(self.raw_votes): #go through all the votes
@@ -292,6 +310,63 @@ class Election:
                     print("WARNING : Repeat candidates policy ",self.repeat_candidates_policy, " not valid")
             i = i + 1 #increment i by 1
 
+        #determine the number of candidates where a valid preference was indicated
+        num_valid_preferences = 0
+        for preference in raw_vote:
+            if preference>0:
+                num_valid_preferences = num_valid_preferences+1
+            else:
+                continue
+        #determine if the number of candidates indicated is in the allowed range
+        #first check it is less than or equal to the maximum
+        if num_valid_preferences<=self.max_candidates:#candidates less than the max
+            pass #vote is valid
+        elif num_valid_preferences>self.max_candidates: #too many candidates indicated 
+            if self.too_many_candidates_policy=='invalid': #too many candidates vote invalid
+                vote_valid = False
+                return vote_valid,None
+            elif self.too_many_candidates_policy=='discard_extra': #too many candidates, discard lower ranking preferences
+                for j,preference in enumerate(raw_vote):
+                    if preference>self.max_candidates:
+                        raw_vote[j] = 0 #vote is worth nothing
+                #now recalculate the number of valid preferences
+                num_valid_preferences = 0
+                for preference in raw_vote:
+                    if preference>0:
+                        num_valid_preferences = num_valid_preferences+1
+                    else:
+                        continue
+            else:
+                print("WARNING : ",self.too_many_candidates_policy," not a valid policy")
+                print("Defaulting to invalid")
+                vote_valid = False
+                return vote_valid,None
+
+        else:
+            print("WARNING : number of preferences ie neither more than or less/than equal maximum number of candidates, this should never happen")
+            #make vote invalid
+            vote_valid = False
+            return vote_valid,None
+
+        #then that it is more than or equal to the minimum
+        if num_valid_preferences>=self.min_candidates: #enough candidates
+            pass
+        elif num_valid_preferences<self.min_candidates: #not enough candidates
+            if self.too_few_candidates_policy=='invalid':
+                #make vote invalid
+                vote_valid = False
+                return vote_valid,None
+            else:
+                print("WARNING : ",self.too_few_candidates_policy," not a valid policy")
+                print("Defaulting to invalid")
+                vote_valid = False
+                return vote_valid,None
+        else:
+            print("WARNING : number of preferences ie neither more/equal than or less than the minimum number of candidates, this should never happen")
+            #make vote invalid
+            vote_valid = False
+            return vote_valid,None
+                      
         return vote_valid,raw_vote     
             
     #validate party list votes
