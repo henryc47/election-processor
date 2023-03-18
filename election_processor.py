@@ -1,8 +1,9 @@
 #election_processor.py
 #a program for determing the outcome of elections
 
-import csv
-from tqdm import tqdm
+import csv #for importing info
+import math #for floor
+from tqdm import tqdm #for progress bars
 
 #function to manage the election process
 class Election:
@@ -31,8 +32,15 @@ class Election:
         self.display_preference_order_votes()
         if self.voting_type=='first-past-the-post':
             self.first_past_the_post()
+        elif self.voting_type=='preference-vote':
+            if self.num_winners==1:
+                self.preference_vote()
+            elif self.num_winners>1:
+                self.single_transferable_vote() #multi-winner of single transferable vote
+            else:
+                print('WARNING: number of winners in the election ',self.num_winners,' is not a valid number of winners')
         else:
-            self.single_transferable_vote()
+            print('WARNING: ',self.voting_type,' is not a supported type of election')
 
 
     #import basic details about the election
@@ -51,8 +59,8 @@ class Election:
                         #in first past the post voting, preferences don't matter, those with the most first preferences win
                         self.voting_type = 'first-past-the-post'
                         print('You have selected ',self.voting_type,' election') 
-                    elif extract_data=='single-transferable-vote' or extract_data=='stv':
-                        self.voting_type = 'single-transferable-vote'
+                    elif extract_data=='preference-vote' or extract_data=='pv':
+                        self.voting_type = 'preference-vote'
                         print('You have selected ',self.voting_type,' election') 
                         print('WARNING: single transferable vote still in development')
                     else:
@@ -439,7 +447,7 @@ class Election:
             num_votes[vote[0]] = num_votes[vote[0]] + 1 #get the first preference add 1 to the selected candidates vote tally
         #display vote counts
         #first rank the order of vote totals
-        ranked_votes,ranked_candidates = self.rank_vote_totals(num_votes)
+        ranked_votes,ranked_candidates = self.rank_vote_totals(num_votes,self.num_candidates)
         #then display the vote totals in descending order
         for i,candidate_id in enumerate(ranked_candidates):
             print(self.candidates[candidate_id][0],' : votes = ',ranked_votes[i]) #print the number of votes of each candidate
@@ -475,25 +483,125 @@ class Election:
             print('due to a tie',num_winners_determined,' candidates elected while there are only ',self.num_winners,' positions. A reelection is needed')
 
     #run an election using the single transferable vote method
+    #note this is identical to instant-runoff voting for single winner elections
+    def preference_vote(self):
+        self.active_preference_votes = self.preference_votes.copy()
+        candidates_active_index = list(range(self.num_candidates)) #index of still active candidates
+        num_active_candidates = len(candidates_active_index)
+        total_num_exhausted_votes = 0 #number of votes that did not help elect a candidate before the final two
+        print("running preferential vote election")
+        #num_valid_votes = len(self.preference_votes) #how many votes are there in total
+        round = 1
+        while num_active_candidates>=2: #continue counting votes and eliminating lower candidates till we have just two remaining
+            print('round ',round, 'counting votes')
+            round = round + 1
+            #count votes
+            #try:
+            #    print('num votes before',num_votes,'num_active_candidates before',num_active_candidates)
+            #except:
+            #    pass
+            num_votes = [0]*num_active_candidates #number of votes that each candidate has gained
+            #print('num votes after',num_votes,'num_active_candidates after',num_active_candidates)
+            for vote in tqdm(self.active_preference_votes):
+                first_pref_index = candidates_active_index.index(vote[0])
+                #print('first pref index ',first_pref_index)
+                num_votes[first_pref_index] = num_votes[first_pref_index] + 1 #get the first preference add 1 to the selected candidates vote tally
+                #print('first pref index ',first_pref_index) #good
+                #print('num votes ',num_votes)               #good
+                #print('num votes[first_pref_index] ',num_votes[first_pref_index]) #good
+            #rank candidates by number of votes counted
+            ranked_votes,ranked_candidates = self.rank_vote_totals(num_votes.copy(),num_active_candidates)
+            for i,candidate_index in enumerate(candidates_active_index):
+                #print('i ',i,'candidate index',candidate_index) #DEBUG
+                #print('num votes loop',num_votes,'num_active_candidates loop',num_active_candidates) #DEBUG
+                #print(self.candidates[candidate_index][0],' : votes = ',num_votes[0])
+                print(self.candidates[candidates_active_index[ranked_candidates[i]]][0],' : votes = ',ranked_votes[i])
+            if num_active_candidates==2:
+                print(self.candidates[ranked_candidates[0]][0], ' Won!')
+                break
+            else:
+                print('total exhausted votes = ',total_num_exhausted_votes)
+                minimum_votes = ranked_votes[-1] #smallest number of votes any candidate got in this round
+                minimum_candidate_positions = [i for i in range(num_active_candidates) if minimum_votes==num_votes[i]] #get the index of places with the least votes
+                minimum_candidate_indices = [] #list of all minimum candidates, so we can display who won in the case of ties
+                for minimum_candidate in reversed(minimum_candidate_positions): #go through all the equally minimum candidates, who are to be eliminated
+                    #we do this backwards to avoid affecting the position in the candidates active index array
+                    candidate_index = candidates_active_index[minimum_candidate] #get index of eliminated candidate in list of all candidates
+                    minimum_candidate_indices.append(candidate_index) #store  in list of minimum candidates             
+                    print(self.candidates[candidate_index][0],' eliminated ')
+                    #now remove the candidate from the list of active candidates
+                    del candidates_active_index[minimum_candidate]
+                    #now lets reassign their preferences
+                    print('reassigning their preferences . . .')
+                    for j,vote in tqdm(enumerate(self.active_preference_votes)):
+                        try: #see if the vote has this as a preference 
+                            preference_position = vote.index(candidate_index) #they do!
+                            del vote[preference_position] #delete this preference from the vote
+                            self.active_preference_votes[j] = vote #and store the new vote in the list of votes
+                        except ValueError:
+                            continue #preference not in vote, continue
+                    print('eliminating exhausted votes . . .')
+                    local_num_exhausted_votes = 0
+                    j = 0 #index
+                    #while j<num_active_votes:
+                    #    num_preferences = len(self.active_preference_votes[j])
+                    #    if num_preferences==0: #no preferences left, the vote is exhausted
+                    #        del self.active_preferences_votes[j] #delete the empty vote
+                    #        local_num_exhausted_votes = local_num_exhausted_votes + 1
+                    #        #don't move the index forward as we have deleted a vote, so same position will be next vote
+                    #    else:
+                    #        j = j+1 #move the index forward to the next vote
+                    self.non_exhausted_votes = []
+                    for vote in tqdm(self.active_preference_votes):
+                        num_preferences_left = len(vote)
+                        if num_preferences_left==0: #no preferences left, the vote is exhausted
+                            local_num_exhausted_votes = local_num_exhausted_votes + 1
+                        else:
+                            self.non_exhausted_votes.append(vote) #append the vote to list of non-exhausted votes
+                    self.active_preference_votes = self.non_exhausted_votes #update the list of still active votes
+                    print(local_num_exhausted_votes,' additional votes now exhausted with elimination')
+                    total_num_exhausted_votes = total_num_exhausted_votes + local_num_exhausted_votes #add new exhausts onto total number of exhausted votes
+                num_active_candidates = len(candidates_active_index) #how many candidates are left after elimination
+
+        #after the elimination loop
+        if num_active_candidates==0:
+            num_winning_candidates = len(minimum_candidate_indices)
+            print('there was a ',num_winning_candidates,' tie between ')
+            for candidate_id in minimum_candidate_indices:
+                print(self.candidates[candidate_id][0])
+        elif num_active_candidates==1:
+            print('a two way tie occured between the runners-up')
+            print('this means ',self.candidates[candidates_active_index[0]][0],' won!')
+        elif num_active_candidates==2:
+            #this is handled in while loop
+            pass
+        else:
+            print("WARNING : more than two active candidates remaining, we should still be in the loop")
+                
+                
+            
+
+
+            
+
+
+        
+        
     def single_transferable_vote(self):
-        pass #not yet implemented
-
-
-
-
+        print('running single transferable vote election')
+        print("WARNING: NOT YET SUPPORTED")
         
-        
-
     
     #return a list of candidate votes in descending order and a list of candidates by number of votes in descending order
-    def rank_vote_totals(self,num_votes):
+    #this is good for non-preferential voting only
+    def rank_vote_totals(self,num_votes,num_candidates):
         copy_num_votes = num_votes.copy() #copy for indexing
         while len(num_votes)>0: #till we have ranked all vote totals
             order_num_votes = [] #number of votes of each candidate in descending order of number of votes
             order_candidates = [] #number of votes
             while (len(num_votes)>0):
                 max_votes = max(num_votes) #get the maximum number of votes
-                candidate_positions = [i for i in range(self.num_candidates) if copy_num_votes[i]==max_votes] #get the index of places with the most votes
+                candidate_positions = [i for i in range(num_candidates) if copy_num_votes[i]==max_votes] #get the index of places with the most votes
                 for position in candidate_positions: #add candidates with this many votes to the ranking
                     order_candidates.append(position) #add the candidates position to the ranked list of candidates
                     order_num_votes.append(max_votes) #add the candidates number of votes to the ranked list of vote totals
@@ -502,12 +610,6 @@ class Election:
                 
         return order_num_votes,order_candidates
         
-
-
-
-
-
-
 #main function, run the election
 def main():
     election_csv = 'election_csv.csv'
