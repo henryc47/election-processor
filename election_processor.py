@@ -29,6 +29,10 @@ class Election:
         self.display_valid_votes()
         print('preference votes')
         self.display_preference_order_votes()
+        if self.voting_type=='first-past-the-post':
+            self.first_past_the_post()
+        else:
+            self.single_transferable_vote()
 
 
     #import basic details about the election
@@ -69,8 +73,20 @@ class Election:
                 
                 #how many winners will there be at the election
                 elif row_number==3:
-                    self.num_winners = extract_data
-                    print('There will be ',extract_data, 'winners at the election')
+                    try:
+                        self.num_winners = int(extract_data)
+                        if self.num_winners<=0:
+                            print('there must be a positive number of winners, defaulting to 1')
+                            self.num_winners
+                        if self.num_winners==1:
+                            print('there will be ',self.num_winners,' winner at the election')
+                        else:
+                            print('there will be ',self.num_winners,' winners at the election')
+
+                        print('There will be ',self.num_winners, 'winners at the election')
+                    except ValueError:
+                        print('invalid number of winners selected, defaulting to 1')
+                        self.num_winners = 1
                 #how will non-final ties be eliminated
                 elif row_number==4:
                     if extract_data=='same_time':
@@ -413,6 +429,82 @@ class Election:
     def display_preference_order_votes(self):
         for vote in self.preference_votes:
             print(vote)
+
+    #run an election using the first past the post (ftp) method
+    def first_past_the_post(self):
+        num_votes = [0]*self.num_candidates #number of first preference votes (all that matters in ftp) that each candidate has gained
+        print("running first past the post election")
+        print('counting first preferences')
+        for vote in tqdm(self.preference_votes):
+            num_votes[vote[0]] = num_votes[vote[0]] + 1 #get the first preference add 1 to the selected candidates vote tally
+        #display vote counts
+        #first rank the order of vote totals
+        ranked_votes,ranked_candidates = self.rank_vote_totals(num_votes)
+        #then display the vote totals in descending order
+        for i,candidate_id in enumerate(ranked_candidates):
+            print(self.candidates[candidate_id][0],' : votes = ',ranked_votes[i]) #print the number of votes of each candidate
+        #announce the winner
+        if self.num_winners==1:
+            print('the winner is')
+        else:
+            print('the winners are')
+        #how many winners left (if less than 0, we have had more ties than we have room for)
+        num_winners_determined = 0
+        last_total = -1
+        #declare who the winners are
+        for j,vote_total in enumerate(ranked_votes):
+            if vote_total!=last_total: #this candidate did not tie with previous candidate
+                if num_winners_determined<self.num_winners: #we still have winners left to announce
+                    #announce the winner
+                    print(self.candidates[ranked_candidates[j]][0]," : Won! with",vote_total, 'votes')
+                    last_total = vote_total
+                    num_winners_determined = num_winners_determined + 1 
+                else:
+                    #there are no more winners left
+                    break
+            elif vote_total==last_total:
+                #there has been a tie
+                print(self.candidates[ranked_candidates[j]][0]," : Won! with ",vote_total, ' votes')
+                num_winners_determined = num_winners_determined + 1
+
+            else:
+                print("WARNING : vote total is neither equal or unequal to last total, this is impossible")
+        
+        #warn the end user if too many candidates has been elected
+        if num_winners_determined>self.num_winners:
+            print('due to a tie',num_winners_determined,' candidates elected while there are only ',self.num_winners,' positions. A reelection is needed')
+
+    #run an election using the single transferable vote method
+    def single_transferable_vote(self):
+        pass #not yet implemented
+
+
+
+
+        
+        
+
+    
+    #return a list of candidate votes in descending order and a list of candidates by number of votes in descending order
+    def rank_vote_totals(self,num_votes):
+        copy_num_votes = num_votes.copy() #copy for indexing
+        while len(num_votes)>0: #till we have ranked all vote totals
+            order_num_votes = [] #number of votes of each candidate in descending order of number of votes
+            order_candidates = [] #number of votes
+            while (len(num_votes)>0):
+                max_votes = max(num_votes) #get the maximum number of votes
+                candidate_positions = [i for i in range(self.num_candidates) if copy_num_votes[i]==max_votes] #get the index of places with the most votes
+                for position in candidate_positions: #add candidates with this many votes to the ranking
+                    order_candidates.append(position) #add the candidates position to the ranked list of candidates
+                    order_num_votes.append(max_votes) #add the candidates number of votes to the ranked list of vote totals
+                    delete_index = num_votes.index(max_votes) #index in original list to delete so we don't ask for the same maximum twice
+                    del num_votes[delete_index] #delete the used element from the list for getting the maximum from
+                
+        return order_num_votes,order_candidates
+        
+
+
+
 
 
 
