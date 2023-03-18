@@ -23,10 +23,12 @@ class Election:
             pass #this should never happen
         
         self.convert_votes_to_preference_order() #convert votes from candidate order to preference order for ease of processing
-        #print('raw votes')
-        #self.display_raw_votes()
-        #print('valid votes')
-        #self.display_valid_votes()
+        print('raw votes')
+        self.display_raw_votes()
+        print('valid votes')
+        self.display_valid_votes()
+        print('preference votes')
+        self.display_preference_order_votes()
 
 
     #import basic details about the election
@@ -227,6 +229,8 @@ class Election:
         #self.repeat_candidates_policy
         #self.skip_preferences_policy
         self.num_possible_candidates = len(self.raw_votes[0])
+        if self.num_possible_candidates!=self.num_candidates:
+            print("WARNING: number of places in votes different to number of candidates in candidate list")
         if self.max_candidates==0:#this means maximum is the total number of candidates
             self.max_candidates = self.num_candidates
         if self.min_candidates==0:#this means the minimum is the total number of candidate
@@ -377,8 +381,26 @@ class Election:
     def convert_party_votes(self):
         pass
 
+    #convert all votes from ballot order to preference order
     def convert_votes_to_preference_order(self):
-        pass
+        self.preference_votes = []
+        for vote in tqdm(self.valid_votes): #convert each vote
+            preference_vote = self.convert_vote_to_preference_order(vote)
+            self.preference_votes.append(preference_vote) #and store the new version
+
+
+    #convert a vote from ballot order to preference order
+    #note preference order uses 0 based indexing
+    def convert_vote_to_preference_order(self,vote):
+        preference_vote = []
+        max_preference = max(vote)
+        #note this code relies on all preferences being linear upwards from 1 and unique
+        #this is ensured by the validation step
+        for i in range(1,max_preference+1): #go through all valid (non-zero) preferences
+            preference_index = vote.index(i)#index of the candidate with the ith preference
+            preference_vote.append(preference_index)
+        return preference_vote
+
 
     def display_raw_votes(self):
         for vote in self.raw_votes:
@@ -386,6 +408,10 @@ class Election:
     
     def display_valid_votes(self):
         for vote in self.valid_votes:
+            print(vote)
+    
+    def display_preference_order_votes(self):
+        for vote in self.preference_votes:
             print(vote)
 
 
