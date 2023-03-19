@@ -1,0 +1,10 @@
+Type,preference-vote
+Party_List_Voting,no
+Winners,1
+Early_Tie_Handling,same_time
+Min_Candidates,0
+Max_Candidates,0
+Too_Many_Candidates,invalid
+Too_Few_Candidates,invalid
+Repeat_Candidates,invalid
+Skipped_Preferences_Candidates,invalid
