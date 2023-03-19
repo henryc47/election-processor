@@ -16,19 +16,23 @@ def election_synthesiser(vote_list_csv,output_csv):
             quantity = int(row[0])
             vote = []
             for i in range(1,len(row)):
+                print('row[i] =',row[i])
                 vote.append(row[i])
             num_votes.append(quantity)
             votes.append(vote)
     print('generating synthetic votes . . .')
     all_votes = [] #all raw votes
     for i in tqdm(range(len(votes))):
-        new_votes = votes[i]*num_votes[i]
+        new_votes = [votes[i]]*num_votes[i]
         all_votes = all_votes + new_votes
+    
+    #print(all_votes)
     print('storing synthised votes . . .')
-    with open(output_csv) as csvfile:
+    with open(output_csv,'w') as csvfile:
         csv_writer = csv.writer(csvfile,delimiter=',')
         for vote in tqdm(all_votes):
             csv_writer.writerow(vote)
+    csvfile.close() #close the csv file
         
             
             
@@ -42,13 +46,6 @@ def election_synthesiser(vote_list_csv,output_csv):
     print('storing synthetic votes')
     with open(output_csv) as csvfile:
         csv_writer = csv.writer(csvfile,delimiter=',')
-
-
-
-             
-
-
-
 
 
 #function to manage the election process
@@ -643,10 +640,10 @@ class Election:
         
 #main function, run the election
 def main():
-    election_csv = 'fed_election_csv.csv'
-    candidates_csv = 'fed_bradfield_candidates_csv.csv'
-    election_synthesiser('fed_bradfield_votes_preferenes.csv','output_csv.csv')
-    election = Election(election_csv,candidates_csv,'output_csv.csv')
+    election_csv = 'fed_election.csv'
+    candidates_csv = 'fed_bradfield_candidates.csv'
+    election_synthesiser('fed_bradfield_votes_preferences.csv','output.csv')
+    election = Election(election_csv,candidates_csv,'output.csv')
 
 if __name__ == "__main__":
     main()
