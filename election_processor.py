@@ -5,6 +5,52 @@ import csv #for importing info
 import math #for floor
 from tqdm import tqdm #for progress bars
 
+#synthesise a list of votes, where the format for each line is number of votes->vote
+def election_synthesiser(vote_list_csv,output_csv):
+    num_votes = [] #how many votes does each combination of preferences have
+    votes = [] #what preferences make up this vote
+    with open(vote_list_csv) as csvfile:
+        csv_reader = csv.reader(csvfile,delimiter=',')
+        print('reading vote distribution data . . .')
+        for row in tqdm(csv_reader): #go through each possible preference combination
+            quantity = int(row[0])
+            vote = []
+            for i in range(1,len(row)):
+                vote.append(row[i])
+            num_votes.append(quantity)
+            votes.append(vote)
+    print('generating synthetic votes . . .')
+    all_votes = [] #all raw votes
+    for i in tqdm(range(len(votes))):
+        new_votes = votes[i]*num_votes[i]
+        all_votes = all_votes + new_votes
+    print('storing synthised votes . . .')
+    with open(output_csv) as csvfile:
+        csv_writer = csv.writer(csvfile,delimiter=',')
+        for vote in tqdm(all_votes):
+            csv_writer.writerow(vote)
+        
+            
+            
+
+
+
+
+    
+
+
+    print('storing synthetic votes')
+    with open(output_csv) as csvfile:
+        csv_writer = csv.writer(csvfile,delimiter=',')
+
+
+
+             
+
+
+
+
+
 #function to manage the election process
 class Election:
     def __init__(self,election_csv,candidate_csv,votes_csv,vote_below_the_line_csv=False,party_lists_csv=False):
@@ -24,12 +70,6 @@ class Election:
             pass #this should never happen
         
         self.convert_votes_to_preference_order() #convert votes from candidate order to preference order for ease of processing
-        print('raw votes')
-        self.display_raw_votes()
-        print('valid votes')
-        self.display_valid_votes()
-        print('preference votes')
-        self.display_preference_order_votes()
         if self.voting_type=='first-past-the-post':
             self.first_past_the_post()
         elif self.voting_type=='preference-vote':
@@ -41,7 +81,6 @@ class Election:
                 print('WARNING: number of winners in the election ',self.num_winners,' is not a valid number of winners')
         else:
             print('WARNING: ',self.voting_type,' is not a supported type of election')
-
 
     #import basic details about the election
     #we still need to add party list options
@@ -577,15 +616,7 @@ class Election:
             pass
         else:
             print("WARNING : more than two active candidates remaining, we should still be in the loop")
-                
-                
-            
-
-
-            
-
-
-        
+                 
         
     def single_transferable_vote(self):
         print('running single transferable vote election')
@@ -612,10 +643,11 @@ class Election:
         
 #main function, run the election
 def main():
-    election_csv = 'election_csv.csv'
-    candidates_csv = 'candidates_csv.csv'
-    votes_csv = 'votes_csv.csv'
-    election = Election(election_csv,candidates_csv,votes_csv)
+    election_csv = 'fed_election_csv.csv'
+    candidates_csv = 'fed_bradfield_candidates_csv.csv'
+    election_synthesiser('fed_bradfield_votes_preferenes.csv','output_csv.csv')
+    election = Election(election_csv,candidates_csv,'output_csv.csv')
 
 if __name__ == "__main__":
     main()
+
