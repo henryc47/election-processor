@@ -4,6 +4,8 @@
 import csv #for importing info
 import math #for floor
 from tqdm import tqdm #for progress bars
+import random #for random selection in markov synthesis
+import copy #for deep copying nested lists
 
 #store a list of synthetic votes (given in all_votes) in the csv file output csv
 def store_synthetic_votes(all_votes,output_csv):
@@ -13,8 +15,21 @@ def store_synthetic_votes(all_votes,output_csv):
         for vote in tqdm(all_votes):
             csv_writer.writerow(vote)
     csvfile.close() #close the csv file
-    
 
+#convert votes from preference order to ballot order    
+def convert_preference_to_ballot_votes(pref_votes,num_candidates):
+    print('converting preference format votes to ballot format . . .')
+    ballot_votes = []
+    for vote in tqdm(pref_votes):
+        ballot_vote = [0]*num_candidates #generate the ballot with no preferences
+        preference_count = 1
+        for preference in vote: #go through the preferences in the vote
+            ballot_vote[preference-1] = preference_count #mark this in the ballot
+            preference_count = preference_count + 1 #mark this in the ballot
+        ballot_votes.append(ballot_vote) #now store the ballot
+
+    return ballot_votes
+    
 
 #synthesise a list of votes, where the format for each line is number of votes->vote
 def election_synthesiser(vote_list_csv,output_csv):
@@ -36,28 +51,59 @@ def election_synthesiser(vote_list_csv,output_csv):
     for i in tqdm(range(len(votes))):
         new_votes = [votes[i]]*num_votes[i]
         all_votes = all_votes + new_votes
-    
+
     store_synthetic_votes(all_votes,output_csv) #store the votes
+
 
 #synthesise a list of votes using markov probabilities
 def markov_election_synthesiser(vote_probability_csv,output_csv):
     #read in the markov probability of each vote
+    probabilities = []
+    first_row = True
     with open(vote_probability_csv) as csvfile:
         csv_reader = csv.reader(csvfile,delimiter=',')
         print('reading vote distribution data . . .')
-
-            
-
-
-
-
+        for row in tqdm(csv_reader): #go through each candidate and find out the markov probability of each vote
+            #1st row is just the total number of votes
+            #2nd row is the probability at the start
+            #3rd and futher rows are the probability of another candidate after each candidate0
+            #so there should be two more row's than the number of candidates
+            #the first entry in each row (except 1st) is the probability the next is blank, so needs to be num_candidates + 1 entries in each row
+            if first_row:
+                num_votes = int(row[0])
+                first_row=False
+            else:
+                row_probabilities = []
+                for i in range(0,len(row)):
+                    probability = float(row[i])
+                    row_probabilities.append(probability)
+                probabilities.append(row_probabilities)
+    #now we have found the markov probabilities, generate votes
+    print('generating synthetic votes . . .')
+    preference_votes = [] #generated votes in preference order
+    num_candidates = len(row_probabilities)-1 #how many candidates in the election
+    candidates = list(range(num_candidates+1)) #population of candidates
+    for i in tqdm(range(num_votes)):
+        vote = []
+        candidate_id = 0 #candidate 0 gives probabilities if no candidates selected yet
+        local_probabilities = copy.deepcopy(probabilities) #only modify the probabilities within this vote
+        while True:
+            row_probabilities = local_probabilities[candidate_id] #get the probability of next preferences after a particular candidate
+            if sum(row_probabilities[1:])==0: #all candidates have been selected before (probability of reselection always zero)
+                break #
+            #there are still candidates to select
+            candidate_id = random.choices(candidates,weights=row_probabilities,k=1)[0] #return 1 randomly selected next candidate with a weighted probability
+            if candidate_id==0: #we finished voting
+                break
+            else: #add new candidate to the vote
+                vote.append(candidate_id)
+                #reduce probability of reaching this candidate again to zero
+                for row in local_probabilities:
+                    row[candidate_id]=0 #set the probability of reaching that candidate to zero
+        preference_votes.append(vote) #add vote to the list of votes
     
-
-
-    print('storing synthetic votes')
-    with open(output_csv) as csvfile:
-        csv_writer = csv.writer(csvfile,delimiter=',')
-
+    ballot_votes = convert_preference_to_ballot_votes(preference_votes,num_candidates)
+    store_synthetic_votes(ballot_votes,output_csv) #store the votes
 
 #function to manage the election process
 class Election:
@@ -564,7 +610,7 @@ class Election:
                 #print(self.candidates[candidate_index][0],' : votes = ',num_votes[0])
                 print(self.candidates[candidates_active_index[ranked_candidates[i]]][0],' : votes = ',ranked_votes[i])
             if num_active_candidates==2:
-                print(self.candidates[ranked_candidates[0]][0], ' Won!')
+                print(self.candidates[candidates_active_index[ranked_candidates[0]]][0], ' Won!')
                 break
             else:
                 print('total exhausted votes = ',total_num_exhausted_votes)
@@ -653,7 +699,8 @@ class Election:
 def main():
     election_csv = 'fed_election.csv'
     candidates_csv = 'fed_bradfield_candidates.csv'
-    election_synthesiser('fed_bradfield_votes_preferences.csv','output.csv')
+    #election_synthesiser('fed_bradfield_votes_preferences.csv','output.csv') #constant vote synthesis
+    markov_election_synthesiser('fed_bradfield_votes_markov.csv','output.csv') #markov vote synthesis
     election = Election(election_csv,candidates_csv,'output.csv')
 
 if __name__ == "__main__":
