@@ -5,6 +5,17 @@ import csv #for importing info
 import math #for floor
 from tqdm import tqdm #for progress bars
 
+#store a list of synthetic votes (given in all_votes) in the csv file output csv
+def store_synthetic_votes(all_votes,output_csv):
+    print('storing synthised votes . . .')
+    with open(output_csv,'w') as csvfile:
+        csv_writer = csv.writer(csvfile,delimiter=',')
+        for vote in tqdm(all_votes):
+            csv_writer.writerow(vote)
+    csvfile.close() #close the csv file
+    
+
+
 #synthesise a list of votes, where the format for each line is number of votes->vote
 def election_synthesiser(vote_list_csv,output_csv):
     num_votes = [] #how many votes does each combination of preferences have
@@ -26,15 +37,15 @@ def election_synthesiser(vote_list_csv,output_csv):
         new_votes = [votes[i]]*num_votes[i]
         all_votes = all_votes + new_votes
     
-    #print(all_votes)
-    print('storing synthised votes . . .')
-    with open(output_csv,'w') as csvfile:
-        csv_writer = csv.writer(csvfile,delimiter=',')
-        for vote in tqdm(all_votes):
-            csv_writer.writerow(vote)
-    csvfile.close() #close the csv file
-        
-            
+    store_synthetic_votes(all_votes,output_csv) #store the votes
+
+#synthesise a list of votes using markov probabilities
+def markov_election_synthesiser(vote_probability_csv,output_csv):
+    #read in the markov probability of each vote
+    with open(vote_probability_csv) as csvfile:
+        csv_reader = csv.reader(csvfile,delimiter=',')
+        print('reading vote distribution data . . .')
+
             
 
 
